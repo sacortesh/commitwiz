@@ -39,20 +39,7 @@ run_check "CLI entry file has shebang"       bash -c 'head -1 $(node -e "const p
 run_check "CLI entry file is executable"     bash -c 'test -x $(node -e "const p=require(\"./package.json\"); console.log(Object.values(p.bin||{})[0] || p.bin)")'
 run_check "CLI runs without error"           bash -c 'node $(node -e "const p=require(\"./package.json\"); console.log(Object.values(p.bin||{})[0] || p.bin)") --help || true; node $(node -e "const p=require(\"./package.json\"); console.log(Object.values(p.bin||{})[0] || p.bin)")'
 run_check "No runtime dependencies"         node -e "const p=require('./package.json'); const d=p.dependencies; if(d && Object.keys(d).length>0) process.exit(1)"
-run_check "parseBranch: feat/PROJ-42-foo → issueTag=PROJ-42"    node -e "const {parseBranch}=require('./bin/commitwiz.js'); const r=parseBranch('feat/PROJ-42-foo'); if(r.issueTag!=='PROJ-42') process.exit(1)"
-run_check "parseBranch: feat/PROJ-42-foo → issuePrefix=PROJ"    node -e "const {parseBranch}=require('./bin/commitwiz.js'); const r=parseBranch('feat/PROJ-42-foo'); if(r.issuePrefix!=='PROJ') process.exit(1)"
-run_check "parseBranch: 123-fix-bug → issueTag=123 no prefix"   node -e "const {parseBranch}=require('./bin/commitwiz.js'); const r=parseBranch('123-fix-bug'); if(r.issueTag!=='123'||r.issuePrefix!==null) process.exit(1)"
-run_check "parseBranch: main → issueTag=null issuePrefix=null"  node -e "const {parseBranch}=require('./bin/commitwiz.js'); const r=parseBranch('main'); if(r.issueTag!==null||r.issuePrefix!==null) process.exit(1)"
-run_check "parseGitStatus: staged D → status=deleted"          node -e "const {parseGitStatus}=require('./bin/commitwiz.js'); const r=parseGitStatus('D  deleted.js\n'); if(r.length!==1||r[0].status!=='deleted') process.exit(1)"
-run_check "parseGitStatus: unstaged M → status=modified"       node -e "const {parseGitStatus}=require('./bin/commitwiz.js'); const r=parseGitStatus(' M modified.js\n'); if(r.length!==1||r[0].status!=='modified') process.exit(1)"
-run_check "parseGitStatus: untracked ?? → status=added"        node -e "const {parseGitStatus}=require('./bin/commitwiz.js'); const r=parseGitStatus('?? new.js\n'); if(r.length!==1||r[0].status!=='added') process.exit(1)"
-run_check "parseGitStatus: mixed staged D, unstaged M, ?? → 3 entries" node -e "const {parseGitStatus}=require('./bin/commitwiz.js'); const r=parseGitStatus('D  del.js\n M mod.js\n?? new.js\n'); if(r.length!==3||r[0].status!=='deleted'||r[1].status!=='modified'||r[2].status!=='added') process.exit(1)"
-run_check "promptSteps: exports buildCommitMessage or equivalent" node -e "const m=require('./bin/commitwiz.js'); if(typeof m.buildCommitMessage!=='function') process.exit(1)"
-run_check "buildCommitMessage: type+scope+desc → conventional format" node -e "const {buildCommitMessage}=require('./bin/commitwiz.js'); const r=buildCommitMessage({type:'feat',scope:'auth',description:'add login',issueTag:'PROJ-42'}); if(!/^feat\(auth\): add login/.test(r)) process.exit(1)"
-run_check "buildCommitMessage: no scope → omits parens" node -e "const {buildCommitMessage}=require('./bin/commitwiz.js'); const r=buildCommitMessage({type:'fix',scope:'',description:'typo',issueTag:null}); if(!/^fix: typo/.test(r)||r.includes('()')) process.exit(1)"
-run_check "buildCommitMessage: with issueTag → appends tag" node -e "const {buildCommitMessage}=require('./bin/commitwiz.js'); const r=buildCommitMessage({type:'feat',scope:'',description:'x',issueTag:'PROJ-7'}); if(!r.includes('PROJ-7')) process.exit(1)"
-run_check "COMMIT_TYPES: exported array with feat and fix" node -e "const {COMMIT_TYPES}=require('./bin/commitwiz.js'); if(!Array.isArray(COMMIT_TYPES)||!COMMIT_TYPES.includes('feat')||!COMMIT_TYPES.includes('fix')) process.exit(1)"
-run_check "Unit tests pass" node tests/commitwiz.test.js
+run_check "Unit tests pass with coverage"   npm test
 
 # ── End sensors ────────────────────────────────────────────────────────────────
 

@@ -97,6 +97,13 @@ module.exports = {
   parseGitStatus,
   buildCommitMessage,
   COMMIT_TYPES,
+  isGitRepo,
+  question,
+  promptType,
+  promptScope,
+  promptDescription,
+  promptIssueTag,
+  runPromptLoop,
 };
 
 // ── Interactive CLI ────────────────────────────────────────────────────────────

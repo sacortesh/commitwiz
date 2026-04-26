@@ -9,5 +9,10 @@
   "bin": {
     "commitwiz": "./bin/commitwiz.js"
   },
-  "scripts": {}
+  "scripts": {
+    "test": "c8 --check-coverage --include=bin/commitwiz.js --lines 80 --branches 80 node tests/commitwiz.test.js"
+  },
+  "devDependencies": {
+    "c8": "^11.0.0"
+  }
 }

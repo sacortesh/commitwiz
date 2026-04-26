@@ -41,3 +41,7 @@ Feature: Step-by-step commit prompt loop
 ## Notes
 
 <!-- Human notes appended here during execute-task.sh iterations -->
+
+## Rejection Notes — 2026-04-26
+
+i want the unit tests to use the coverage tool, enforce coverage of 80% for lines and branches. also some sensors are overcoverded with the tests. so they can be cleaned up
