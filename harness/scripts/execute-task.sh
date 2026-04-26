@@ -51,9 +51,35 @@ ARCH_CONTENT=""
 CODING_CONTENT=""
 [[ -f "harness/guides/coding-rules.md" ]] && CODING_CONTENT=$(cat "harness/guides/coding-rules.md")
 
+# Extract manual requirements from spec (between ## Manual Requirements and next ## or end)
+MANUAL_REQS=$(awk '/^## Manual Requirements/{found=1; next} found && /^## /{exit} found{print}' "$SPEC_FILE" | grep -v '^[[:space:]]*$' || true)
+
 info "Task spec: ${SPEC_FILE}"
 info "Branch:    ${CURRENT_BRANCH}"
 echo
+
+# ── Surface manual blockers ────────────────────────────────────────────────────
+if [[ -n "$MANUAL_REQS" ]]; then
+  echo
+  gum style --bold --foreground 214 --border double --border-foreground 214 --padding "1 3" \
+    "⚠  MANUAL SETUP REQUIRED — Read before coding"
+  echo
+  gum style --foreground 214 "The following steps CANNOT be done by AI."
+  gum style --foreground 214 "You must complete them manually before the task can succeed."
+  echo
+  echo "$MANUAL_REQS"
+  echo
+  gum style --foreground 240 "Unchecked items above will be verified again at closure."
+  echo
+  if ! yes_no "Have you completed (or noted) the manual requirements above?"; then
+    warn "Complete the manual requirements before proceeding."
+    warn "Edit the spec to mark items done: [ ] → [x]"
+    info "Spec file: ${SPEC_FILE}"
+    echo
+    exit 0
+  fi
+  echo
+fi
 
 # ── Build base context prompt ──────────────────────────────────────────────────
 # Written to a temp file so claude can receive it without quoting issues
@@ -78,6 +104,8 @@ Rules:
 - Follow every architecture and coding rule above.
 - Do not modify files outside this task's scope.
 - When done, say so — the harness will run sensors automatically.
+- Review sensors in harness/sensors/check.sh: if a sensor only duplicates what a unit test already covers and that unit test is already part of the sensor suite, remove the redundant sensor or refactor it into the existing unit test. Only keep sensors that check structural concerns (process exit codes, file existence, CLI contracts) or things that are genuinely out of unit-test scope.
+- Check that a .gitignore exists at the repo root. Detect the project stack from files present (e.g. package.json, go.mod, Cargo.toml, pyproject.toml, etc.) and ensure the .gitignore covers the standard ignored patterns for that stack (build artifacts, dependency directories, env files, editor noise, OS files). Add any missing entries — do not remove existing ones.
 PROMPT
 }
 

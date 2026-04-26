@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # check.sh — harness sensor aggregator
 # Add checks below as new task types are encountered.
+run_check "git remote origin exists"         bash -c 'git remote get-url origin'
+run_check "remote origin points to github"   bash -c 'git remote get-url origin | grep -q "github.com"'
 
 set -euo pipefail
 

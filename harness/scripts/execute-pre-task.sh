@@ -64,6 +64,41 @@ Write 2-4 scenarios. Be specific. No prose." \
 
 confirm_or_edit BDD "BDD acceptance criteria"
 
+# ── Manual requirements detection ──────────────────────────────────────────────
+header "Detecting manual setup requirements..."
+
+MANUAL_REQS=$("$SCRIPT_DIR/claude.sh" \
+  "For this task: '${TASK}'
+
+Identify ANY manual steps a human must do that code CANNOT do automatically.
+Examples: create .env file, register API key, provision database, create cloud account, configure DNS, set up OAuth app, obtain credentials.
+
+If there are manual requirements, list them as actionable steps with:
+- what needs to be done
+- where to do it (URL, file path, service name)
+- what value/output to capture
+
+If there are NO manual requirements, reply with exactly: none
+
+Format (if any):
+- [ ] <step>: <where/how> → capture: <what to save>
+
+No prose. Steps only." \
+  <(echo "$VISION_CONTEXT"))
+
+if [[ "$MANUAL_REQS" != "none" && -n "$MANUAL_REQS" ]]; then
+  echo
+  gum style --bold --foreground 214 "  ⚠  MANUAL SETUP REQUIRED — AI cannot do this automatically"
+  divider
+  echo "$MANUAL_REQS"
+  divider
+  echo
+  confirm_or_edit MANUAL_REQS "manual requirements"
+else
+  MANUAL_REQS=""
+  success "No manual setup required for this task."
+fi
+
 # ── Sensor check ───────────────────────────────────────────────────────────────
 header "Checking sensors..."
 
@@ -165,6 +200,16 @@ if [[ -f "$SPEC_FILE" ]]; then
 fi
 
 if [[ ! -f "$SPEC_FILE" ]]; then
+  MANUAL_SECTION=""
+  if [[ -n "$MANUAL_REQS" ]]; then
+    MANUAL_SECTION="## Manual Requirements
+
+<!-- Complete ALL items below before or during this task. AI cannot do these. -->
+${MANUAL_REQS}
+
+---"
+  fi
+
   cat > "$SPEC_FILE" <<SPEC_EOF
 # Task Spec: ${TASK}
 
@@ -179,6 +224,8 @@ Created: $(date +%Y-%m-%d)
 ${BDD}
 
 ---
+
+${MANUAL_SECTION}
 
 ## Notes
 

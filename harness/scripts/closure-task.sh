@@ -50,6 +50,40 @@ fi
 
 echo
 
+# ── Manual requirements gate ──────────────────────────────────────────────────
+MANUAL_REQS=$(awk '/^## Manual Requirements/{found=1; next} found && /^## /{exit} found{print}' "$SPEC_FILE" | grep -v '^[[:space:]]*$' || true)
+MANUAL_UNCHECKED=$(echo "$MANUAL_REQS" | grep '^\- \[ \]' || true)
+
+if [[ -n "$MANUAL_REQS" ]]; then
+  echo
+  gum style --bold --foreground 214 --border double --border-foreground 214 --padding "1 3" \
+    "⚠  MANUAL REQUIREMENTS — Verify before closing"
+  echo
+  echo "$MANUAL_REQS"
+  echo
+
+  if [[ -n "$MANUAL_UNCHECKED" ]]; then
+    echo
+    gum style --bold --foreground 196 "  The following items are NOT marked complete:"
+    echo "$MANUAL_UNCHECKED" | while IFS= read -r line; do
+      gum style --foreground 196 "  $line"
+    done
+    echo
+    gum style --foreground 240 "  Mark items done in the spec: change [ ] to [x]"
+    gum style --foreground 240 "  Spec: ${SPEC_FILE}"
+    echo
+    if ! yes_no "All manual requirements are truly complete (mark them [x] in the spec first)?"; then
+      warn "Resolve all manual requirements before closing the task."
+      info "Edit the spec: ${SPEC_FILE}"
+      info "Then re-run 'avangardespec close'."
+      exit 0
+    fi
+  else
+    success "All manual requirements are marked complete."
+  fi
+  echo
+fi
+
 # ── BDD vs implementation diff ────────────────────────────────────────────────
 header "Validating behavior against BDD..."
 

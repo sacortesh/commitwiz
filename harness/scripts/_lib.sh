@@ -58,8 +58,8 @@ ask() {
   info "$prompt"
   local value
   value=$(gum write \
-    --placeholder "${default:-...}" \
-    --value "$default" \
+    --placeholder="${default:-...}" \
+    --value="$default" \
     --width 80 \
     --height 3 \
     --char-limit 0)
@@ -81,8 +81,8 @@ ask_multiline() {
   info "$prompt"
   local value
   value=$(gum write \
-    --placeholder "..." \
-    --value "$initial" \
+    --placeholder="..." \
+    --value="$initial" \
     --width 80 \
     --height 15 \
     --char-limit 0)

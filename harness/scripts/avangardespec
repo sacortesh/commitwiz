@@ -58,6 +58,7 @@ show_help() {
 
   Subcommands:
     init       Initialize harness in current directory (run once)
+    adopt      Retrofit harness onto an existing project
     sync       Re-copy harness scripts into harness/scripts/ (no wizard)
     plan       Create or refresh the phased task list
     scope      Add a new task or feature mid-project
@@ -85,6 +86,9 @@ SUBCOMMAND="${1:-help}"
 case "$SUBCOMMAND" in
   init)
     exec bash "$SCRIPTS/init-project.sh" "${@:2}"
+    ;;
+  adopt)
+    exec bash "$SCRIPTS/adopt-project.sh" "${@:2}"
     ;;
   sync)
     # Always use the canonical repo scripts, never the local harness/scripts/ copy

@@ -9,7 +9,8 @@
 
 ## Phase 2 — Interactive Prompt Session (requires Phase 1)
 [x] Build step-by-step prompt loop: type → scope → description → issueTag confirm
-[ ] Add commit type selector (feat | fix | chore | docs | refactor) with arrow-key nav via raw stdin
+[X] Add commit type selector (feat | fix | chore | docs | refactor) with arrow-key nav via raw stdin
+[ ] Create github repo to begin uploading code to a true git origin.
 [ ] Add edit mode: allow user to go back and revise any field before confirming
 
 
