@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # check.sh — harness sensor aggregator
 # Add checks below as new task types are encountered.
-run_check "git remote origin exists"         bash -c 'git remote get-url origin'
-run_check "remote origin points to github"   bash -c 'git remote get-url origin | grep -q "github.com"'
 
 set -euo pipefail
 
@@ -35,6 +33,9 @@ echo "Running sensors..."
 # Example: run_check "Unit tests" npm test
 # Example: run_check "Lint" npm run lint
 # Example: run_check "Typecheck" npx tsc --noEmit
+
+run_check "git remote origin exists"         bash -c 'git remote get-url origin'
+run_check "remote origin points to github"   bash -c 'git remote get-url origin | grep -q "github.com"'
 
 run_check "package.json has bin field"       node -e "const p=require('./package.json'); if(!p.bin) process.exit(1)"
 run_check "CLI entry file has shebang"       bash -c 'head -1 $(node -e "const p=require(\"./package.json\"); console.log(Object.values(p.bin||{})[0] || p.bin)") | grep -q "#!/usr/bin/env node"'
