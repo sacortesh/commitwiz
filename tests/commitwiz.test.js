@@ -14,6 +14,7 @@ const {
   promptScope,
   promptDescription,
   promptIssueTag,
+  selectTypeArrow,
   runPromptLoop,
 } = require('../bin/commitwiz.js');
 
@@ -446,6 +447,91 @@ async function captureStdout(fn) {
   await testAsync('runPromptLoop: EOF after edit issueTag prompt exits cleanly', async () => {
     const rl = makeMockRl(['1', 'auth', 'add login', '', 'edit', 'issueTag']);
     await captureStdout(() => runPromptLoop(rl));
+  });
+
+  // ── selectTypeArrow ──────────────────────────────────────────────────────────
+
+  function makeMockStdin(keys) {
+    const emitter = new EventEmitter();
+    emitter.setRawMode = () => {};
+    emitter.resume = () => {};
+    emitter.setEncoding = () => {};
+    let delay = 5;
+    for (const key of keys) {
+      const k = key;
+      setTimeout(() => emitter.emit('data', k), delay);
+      delay += 5;
+    }
+    return emitter;
+  }
+
+  await testAsync('selectTypeArrow: Enter immediately → returns feat (first item)', async () => {
+    const stdin = makeMockStdin(['\r']);
+    await captureStdout(async () => {
+      const r = await selectTypeArrow(stdin);
+      assert.strictEqual(r, 'feat');
+    });
+  });
+
+  await testAsync('selectTypeArrow: DOWN then Enter → returns fix (second item)', async () => {
+    const stdin = makeMockStdin(['\x1b[B', '\r']);
+    await captureStdout(async () => {
+      const r = await selectTypeArrow(stdin);
+      assert.strictEqual(r, 'fix');
+    });
+  });
+
+  await testAsync('selectTypeArrow: DOWN x5 wraps around → returns feat', async () => {
+    const keys = ['\x1b[B', '\x1b[B', '\x1b[B', '\x1b[B', '\x1b[B', '\r'];
+    const stdin = makeMockStdin(keys);
+    await captureStdout(async () => {
+      const r = await selectTypeArrow(stdin);
+      assert.strictEqual(r, 'feat');
+    });
+  });
+
+  await testAsync('selectTypeArrow: UP from feat wraps to refactor (last item)', async () => {
+    const stdin = makeMockStdin(['\x1b[A', '\r']);
+    await captureStdout(async () => {
+      const r = await selectTypeArrow(stdin);
+      assert.strictEqual(r, 'refactor');
+    });
+  });
+
+  await testAsync('selectTypeArrow: DOWN to refactor then DOWN wraps to feat', async () => {
+    const keys = ['\x1b[B', '\x1b[B', '\x1b[B', '\x1b[B', '\x1b[B', '\r'];
+    const stdin = makeMockStdin(keys);
+    let result;
+    await captureStdout(async () => {
+      result = await selectTypeArrow(stdin);
+    });
+    assert.strictEqual(result, COMMIT_TYPES[0]);
+  });
+
+  await testAsync('selectTypeArrow: Ctrl+C returns null', async () => {
+    const stdin = makeMockStdin(['\x03']);
+    await captureStdout(async () => {
+      const r = await selectTypeArrow(stdin);
+      assert.strictEqual(r, null);
+    });
+  });
+
+  await testAsync('selectTypeArrow: DOWN to fix then UP back to feat then Enter → feat', async () => {
+    const stdin = makeMockStdin(['\x1b[B', '\x1b[A', '\r']);
+    await captureStdout(async () => {
+      const r = await selectTypeArrow(stdin);
+      assert.strictEqual(r, 'feat');
+    });
+  });
+
+  await testAsync('selectTypeArrow: renders all 5 commit types in output', async () => {
+    const stdin = makeMockStdin(['\r']);
+    const out = await captureStdout(async () => {
+      await selectTypeArrow(stdin);
+    });
+    for (const t of COMMIT_TYPES) {
+      assert.ok(out.includes(t), `Expected "${t}" in output`);
+    }
   });
 
   // ── Summary ──────────────────────────────────────────────────────────────────

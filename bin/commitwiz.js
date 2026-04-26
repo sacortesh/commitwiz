@@ -89,6 +89,58 @@ function buildCommitMessage({ type, scope, description, issueTag }) {
   return `${type}${scopePart}: ${description}${tagPart}`;
 }
 
+/**
+ * Arrow-key type selector using raw stdin.
+ * @param {NodeJS.ReadableStream} [stdin] - defaults to process.stdin
+ * @returns {Promise<string|null>}
+ */
+function selectTypeArrow(stdin) {
+  if (!stdin) stdin = process.stdin;
+  return new Promise((resolve) => {
+    let idx = 0;
+    const n = COMMIT_TYPES.length;
+
+    const renderInitial = () => {
+      process.stdout.write('\nSelect commit type (↑↓ arrows, Enter to confirm):\n');
+      COMMIT_TYPES.forEach((t, i) => {
+        process.stdout.write(i === 0 ? `  > ${t}\n` : `    ${t}\n`);
+      });
+    };
+
+    const rerender = () => {
+      for (let i = 0; i < n; i++) process.stdout.write('\x1b[1A\x1b[2K');
+      COMMIT_TYPES.forEach((t, i) => {
+        process.stdout.write(i === idx ? `  > ${t}\n` : `    ${t}\n`);
+      });
+    };
+
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.setEncoding('utf8');
+    renderInitial();
+
+    const onData = (key) => {
+      if (key === '\x1b[A') {
+        idx = (idx - 1 + n) % n;
+        rerender();
+      } else if (key === '\x1b[B') {
+        idx = (idx + 1) % n;
+        rerender();
+      } else if (key === '\r' || key === '\n') {
+        stdin.removeListener('data', onData);
+        stdin.setRawMode(false);
+        resolve(COMMIT_TYPES[idx]);
+      } else if (key === '\x03') {
+        stdin.removeListener('data', onData);
+        stdin.setRawMode(false);
+        resolve(null);
+      }
+    };
+
+    stdin.on('data', onData);
+  });
+}
+
 module.exports = {
   parseBranch,
   getCurrentBranch,
@@ -103,6 +155,7 @@ module.exports = {
   promptScope,
   promptDescription,
   promptIssueTag,
+  selectTypeArrow,
   runPromptLoop,
 };
 
@@ -213,7 +266,7 @@ async function runPromptLoop(rl) {
   const session = { type: '', scope: '', description: '', issueTag: branchIssueTag || '' };
 
   // Initial pass through all steps
-  const type = await promptType(rl);
+  const type = process.stdin.isTTY ? await selectTypeArrow() : await promptType(rl);
   if (type === null) return;
   session.type = type;
 
@@ -249,7 +302,7 @@ async function runPromptLoop(rl) {
       if (field === null) return;
       const f = field.trim().toLowerCase();
       if (f === 'type') {
-        const newType = await promptType(rl);
+        const newType = process.stdin.isTTY ? await selectTypeArrow() : await promptType(rl);
         if (newType === null) return;
         session.type = newType;
       } else if (f === 'scope') {
