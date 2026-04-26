@@ -28,7 +28,45 @@ function parseBranch(rawBranchName) {
   return { issueTag: null, issuePrefix: null };
 }
 
-module.exports = { parseBranch };
+/**
+ * Returns the current git branch name.
+ * @returns {string}
+ */
+function getCurrentBranch() {
+  return execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
+}
+
+/**
+ * Returns branch metadata including the parsed issue tag and prefix.
+ * @returns {{ branchName: string, issueTag: string|null, issuePrefix: string|null }}
+ */
+function parseBranchMeta() {
+  const branchName = getCurrentBranch();
+  const { issueTag, issuePrefix } = parseBranch(branchName);
+  return { branchName, issueTag, issuePrefix };
+}
+
+const STATUS_MAP = { M: 'modified', A: 'added', D: 'deleted', '?': 'added' };
+
+/**
+ * Returns a list of changed files with their status.
+ * @returns {Array<{ path: string, status: string }>}
+ */
+function getChangedFiles() {
+  const output = execSync('git status --porcelain', { encoding: 'utf8' });
+  return output
+    .split('\n')
+    .filter(line => line.trim().length > 0)
+    .map(line => {
+      const xy = line.slice(0, 2);
+      const filePath = line.slice(3).trim();
+      const code = xy.trim()[0];
+      const status = STATUS_MAP[code] || 'modified';
+      return { path: filePath, status };
+    });
+}
+
+module.exports = { parseBranch, getCurrentBranch, parseBranchMeta, getChangedFiles };
 
 function isGitRepo() {
   try {
