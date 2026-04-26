@@ -30,6 +30,12 @@ Feature: Step-by-step commit prompt loop
     When the user selects "edit" at the confirmation prompt and changes the type to "fix"
     Then the CLI re-runs only the type step, preserves other answers, and re-displays the updated formatted message
 
+  Scenario: Agent assembles test battery infrastructure
+    Given the agent has coded enough
+    When the agent finishes new testable tasks
+    Then the agent implements unit testing, 
+    and adds the running logic into the sensors
+
 ---
 
 ## Notes

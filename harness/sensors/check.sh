@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
 # check.sh — harness sensor aggregator
 # Add checks below as new task types are encountered.
-run_check "promptSteps: exports buildCommitMessage or equivalent" node -e "const m=require('./bin/commitwiz.js'); if(typeof m.buildCommitMessage!=='function') process.exit(1)"
-run_check "buildCommitMessage: type+scope+desc → conventional format" node -e "const {buildCommitMessage}=require('./bin/commitwiz.js'); const r=buildCommitMessage({type:'feat',scope:'auth',description:'add login',issueTag:'PROJ-42'}); if(!/^feat\(auth\): add login/.test(r)) process.exit(1)"
-run_check "buildCommitMessage: no scope → omits parens" node -e "const {buildCommitMessage}=require('./bin/commitwiz.js'); const r=buildCommitMessage({type:'fix',scope:'',description:'typo',issueTag:null}); if(!/^fix: typo/.test(r)||r.includes('()')) process.exit(1)"
-run_check "buildCommitMessage: with issueTag → appends tag" node -e "const {buildCommitMessage}=require('./bin/commitwiz.js'); const r=buildCommitMessage({type:'feat',scope:'',description:'x',issueTag:'PROJ-7'}); if(!r.includes('PROJ-7')) process.exit(1)"
-run_check "COMMIT_TYPES: exported array with feat and fix" node -e "const {COMMIT_TYPES}=require('./bin/commitwiz.js'); if(!Array.isArray(COMMIT_TYPES)||!COMMIT_TYPES.includes('feat')||!COMMIT_TYPES.includes('fix')) process.exit(1)"
 
 set -euo pipefail
 
@@ -52,6 +47,12 @@ run_check "parseGitStatus: staged D → status=deleted"          node -e "const 
 run_check "parseGitStatus: unstaged M → status=modified"       node -e "const {parseGitStatus}=require('./bin/commitwiz.js'); const r=parseGitStatus(' M modified.js\n'); if(r.length!==1||r[0].status!=='modified') process.exit(1)"
 run_check "parseGitStatus: untracked ?? → status=added"        node -e "const {parseGitStatus}=require('./bin/commitwiz.js'); const r=parseGitStatus('?? new.js\n'); if(r.length!==1||r[0].status!=='added') process.exit(1)"
 run_check "parseGitStatus: mixed staged D, unstaged M, ?? → 3 entries" node -e "const {parseGitStatus}=require('./bin/commitwiz.js'); const r=parseGitStatus('D  del.js\n M mod.js\n?? new.js\n'); if(r.length!==3||r[0].status!=='deleted'||r[1].status!=='modified'||r[2].status!=='added') process.exit(1)"
+run_check "promptSteps: exports buildCommitMessage or equivalent" node -e "const m=require('./bin/commitwiz.js'); if(typeof m.buildCommitMessage!=='function') process.exit(1)"
+run_check "buildCommitMessage: type+scope+desc → conventional format" node -e "const {buildCommitMessage}=require('./bin/commitwiz.js'); const r=buildCommitMessage({type:'feat',scope:'auth',description:'add login',issueTag:'PROJ-42'}); if(!/^feat\(auth\): add login/.test(r)) process.exit(1)"
+run_check "buildCommitMessage: no scope → omits parens" node -e "const {buildCommitMessage}=require('./bin/commitwiz.js'); const r=buildCommitMessage({type:'fix',scope:'',description:'typo',issueTag:null}); if(!/^fix: typo/.test(r)||r.includes('()')) process.exit(1)"
+run_check "buildCommitMessage: with issueTag → appends tag" node -e "const {buildCommitMessage}=require('./bin/commitwiz.js'); const r=buildCommitMessage({type:'feat',scope:'',description:'x',issueTag:'PROJ-7'}); if(!r.includes('PROJ-7')) process.exit(1)"
+run_check "COMMIT_TYPES: exported array with feat and fix" node -e "const {COMMIT_TYPES}=require('./bin/commitwiz.js'); if(!Array.isArray(COMMIT_TYPES)||!COMMIT_TYPES.includes('feat')||!COMMIT_TYPES.includes('fix')) process.exit(1)"
+run_check "Unit tests pass" node tests/commitwiz.test.js
 
 # ── End sensors ────────────────────────────────────────────────────────────────
 
