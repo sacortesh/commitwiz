@@ -3,7 +3,7 @@
 ## Phase 1 — Core CLI Scaffold
 [X] Init single-file Node.js CLI entry point with `npx` support (`bin` field, shebang, no deps)
 [x] Implement branch parser: extract `issueTag` and `issuePrefix` from `rawBranchName`
-[ ] Implement git utils: read current branch, list changed files with status
+[x] Implement git utils: read current branch, list changed files with status
 
 
 
