@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # check.sh — harness sensor aggregator
 # Add checks below as new task types are encountered.
+run_check "Selector source file exists"        bash -c 'ls src/selector.js src/commitTypeSelector.js src/ui/selector.js 2>/dev/null | grep -q .'
+run_check "Commit types defined in source"     bash -c 'grep -r "feat.*fix\|fix.*feat" src/ --include="*.js" -l | grep -q .'
+run_check "All 5 commit types present"         bash -c 'grep -rh "feat\|fix\|chore\|docs\|refactor" src/ --include="*.js" | grep -qE "(feat|fix|chore|docs|refactor)" && node -e "const src=require(\"fs\").readFileSync(require(\"fs\").readdirSync(\"src\").find(f=>f.match(/select/i))?\"src/\"+require(\"fs\").readdirSync(\"src\").find(f=>f.match(/select/i)):\"\",\"utf8\"); [\"feat\",\"fix\",\"chore\",\"docs\",\"refactor\"].forEach(t=>{if(!src.includes(t))process.exit(1)})"'
+run_check "Raw stdin / keypress handling"      bash -c 'grep -r "setRawMode\|process.stdin.setRawMode\|readline\|keypress" src/ --include="*.js" -l | grep -q .'
+run_check "Arrow key codes handled"            bash -c 'grep -r "\\\\x1b\[A\|\\\\u001b\[A\|ArrowUp\|ARROW_UP\|\\\\x1B\[B\|ArrowDown" src/ --include="*.js" -l | grep -q .'
 
 set -euo pipefail
 
