@@ -7,3 +7,4 @@
 | 2026-04-26 | Implement git utils: read current branch, list changed files with status | Done |
 | 2026-04-26 | Build step-by-step prompt loop: type → scope → description → issueTag confirm | Done |
 | 2026-04-26 | Add commit type selector (feat | fix | chore | docs | refactor) with arrow-key nav via raw stdin | Done |
+| 2026-04-26 | Create github repo to begin uploading code to a true git origin. | Done |
