@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # check.sh — harness sensor aggregator
 # Add checks below as new task types are encountered.
-# Each check should exit 0 on pass, non-zero on fail.
 
 set -euo pipefail
 
@@ -40,6 +39,10 @@ run_check "CLI entry file has shebang"       bash -c 'head -1 $(node -e "const p
 run_check "CLI entry file is executable"     bash -c 'test -x $(node -e "const p=require(\"./package.json\"); console.log(Object.values(p.bin||{})[0] || p.bin)")'
 run_check "CLI runs without error"           bash -c 'node $(node -e "const p=require(\"./package.json\"); console.log(Object.values(p.bin||{})[0] || p.bin)") --help || true; node $(node -e "const p=require(\"./package.json\"); console.log(Object.values(p.bin||{})[0] || p.bin)")'
 run_check "No runtime dependencies"         node -e "const p=require('./package.json'); const d=p.dependencies; if(d && Object.keys(d).length>0) process.exit(1)"
+run_check "parseBranch: feat/PROJ-42-foo → issueTag=PROJ-42"    node -e "const {parseBranch}=require('./bin/commitwiz.js'); const r=parseBranch('feat/PROJ-42-foo'); if(r.issueTag!=='PROJ-42') process.exit(1)"
+run_check "parseBranch: feat/PROJ-42-foo → issuePrefix=PROJ"    node -e "const {parseBranch}=require('./bin/commitwiz.js'); const r=parseBranch('feat/PROJ-42-foo'); if(r.issuePrefix!=='PROJ') process.exit(1)"
+run_check "parseBranch: 123-fix-bug → issueTag=123 no prefix"   node -e "const {parseBranch}=require('./bin/commitwiz.js'); const r=parseBranch('123-fix-bug'); if(r.issueTag!=='123'||r.issuePrefix!==null) process.exit(1)"
+run_check "parseBranch: main → issueTag=null issuePrefix=null"  node -e "const {parseBranch}=require('./bin/commitwiz.js'); const r=parseBranch('main'); if(r.issueTag!==null||r.issuePrefix!==null) process.exit(1)"
 
 # ── End sensors ────────────────────────────────────────────────────────────────
 

@@ -118,6 +118,12 @@ if yes_no "Does the behavior match the intent? (OK to close)"; then
 
   # ── Merge branch ──────────────────────────────────────────────────────────────
   info "Merging ${CURRENT_BRANCH} into ${BASE_BRANCH}..."
+  # Create base branch if it doesn't exist yet (first task on a new repo)
+  if ! git show-ref --verify --quiet "refs/heads/${BASE_BRANCH}"; then
+    info "Base branch '${BASE_BRANCH}' does not exist — creating it from current HEAD..."
+    git checkout -b "$BASE_BRANCH"
+    git checkout "$CURRENT_BRANCH"
+  fi
   git checkout "$BASE_BRANCH"
   git merge --no-ff "$CURRENT_BRANCH" -m "merge: complete task/${SLUG}"
   success "Merged ${CURRENT_BRANCH} into ${BASE_BRANCH}"

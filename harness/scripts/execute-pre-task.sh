@@ -98,7 +98,7 @@ SENSOR_CONTENT=$(cat "$SENSOR_FILE")
 
 info "Task type detected: ${TASK_TYPE}"
 
-# Ask AI if sensors cover this task type
+# Ask AI for sensor lines — ask for run_check lines only after a clear marker
 SENSOR_CHECK=$("$SCRIPT_DIR/claude.sh" \
   "Current check.sh content:
 ${SENSOR_CONTENT}
@@ -106,31 +106,46 @@ ${SENSOR_CONTENT}
 Task type: ${TASK_TYPE}
 Task: ${TASK}
 
-Does check.sh cover this task type?
-- covered: yes or no
-- missing: what checks are missing (if any)
-- proposed_addition: exact bash lines to add to check.sh (or 'none')")
+Does check.sh have run_check lines that validate this task type?
+Reply with exactly this format:
+covered: yes|no
+missing: <what is missing or 'nothing'>
+---SENSOR_LINES---
+<zero or more run_check lines to add, or leave blank if covered>")
 
 divider
 echo "$SENSOR_CHECK"
 divider
 
 COVERED=$(echo "$SENSOR_CHECK" | grep -i '^covered:' | sed 's/covered: *//' | tr '[:upper:]' '[:lower:]' || true)
-PROPOSED=$(echo "$SENSOR_CHECK" | grep -i '^proposed_addition:' | sed 's/proposed_addition: *//' || true)
 
-if [[ "$COVERED" == "no" && -n "$PROPOSED" && "$PROPOSED" != "none" ]]; then
-  warn "Sensors don't cover this task type. Auto-adding proposed check..."
+# Extract everything after the ---SENSOR_LINES--- marker
+PROPOSED=$(echo "$SENSOR_CHECK" | awk '/^---SENSOR_LINES---/{found=1; next} found{print}' | grep -v '^[[:space:]]*$' || true)
+
+if [[ "$COVERED" == "no" && -n "$PROPOSED" ]]; then
+  warn "Sensors don't cover this task type. Auto-adding..."
   echo "$PROPOSED"
   echo
+  # Append after the marker line if it exists, otherwise just append at end
   if grep -q 'Add checks below' "$SENSOR_FILE"; then
-    sed -i.bak "s|# Add checks below|# Add checks below"$'\\\n'"${PROPOSED}|" "$SENSOR_FILE"
-    rm -f "${SENSOR_FILE}.bak"
+    # Insert after the marker using a temp file — avoids sed special char issues
+    TMPFILE=$(mktemp)
+    while IFS= read -r line; do
+      echo "$line" >> "$TMPFILE"
+      if [[ "$line" == *"Add checks below"* ]]; then
+        echo "$PROPOSED" >> "$TMPFILE"
+      fi
+    done < "$SENSOR_FILE"
+    mv "$TMPFILE" "$SENSOR_FILE"
+    chmod +x "$SENSOR_FILE"
   else
-    echo "" >> "$SENSOR_FILE"
-    echo "# Added for ${TASK_TYPE} tasks" >> "$SENSOR_FILE"
-    echo "$PROPOSED" >> "$SENSOR_FILE"
+    {
+      echo ""
+      echo "# Added for ${TASK_TYPE} tasks"
+      echo "$PROPOSED"
+    } >> "$SENSOR_FILE"
   fi
-  success "Sensor added to check.sh."
+  success "Sensors added to check.sh."
 else
   success "Sensors already cover this task type."
 fi
