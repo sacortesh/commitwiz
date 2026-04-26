@@ -1,0 +1,225 @@
+#!/usr/bin/env bash
+# execute-pre-task.sh — Pre-task phase wizard
+# Picks next task, generates BDD spec, checks sensors, creates branch.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/_lib.sh"
+
+require_git_repo
+
+TASKS_FILE="$(tasks_file)"
+SENSOR_FILE="harness/sensors/check.sh"
+SPECS_DIR="specs/features"
+
+# ── Guard ──────────────────────────────────────────────────────────────────────
+if [[ ! -f "$TASKS_FILE" ]]; then
+  error "No task list found at ${TASKS_FILE}. Run 'avangardespec plan' first."
+  exit 1
+fi
+
+# ── Pick task ──────────────────────────────────────────────────────────────────
+header "Avangarde Harness — Pre-Task"
+divider
+
+SUGGESTED=$(next_unchecked_task)
+
+if [[ -z "$SUGGESTED" ]]; then
+  success "All tasks are complete! Nothing left to do."
+  exit 0
+fi
+
+info "Next task: ${SUGGESTED}"
+echo
+if ! yes_no "Proceed with this task?"; then
+  ask CUSTOM_TASK "Enter the task you want to work on"
+  TASK="$CUSTOM_TASK"
+else
+  TASK="$SUGGESTED"
+fi
+
+SLUG=$(slugify "$TASK")
+BRANCH="task/${SLUG}"
+SPEC_FILE="${SPECS_DIR}/${SLUG}.md"
+
+# ── BDD generation ─────────────────────────────────────────────────────────────
+header "Generating BDD acceptance criteria..."
+
+VISION_CONTEXT=""
+[[ -f "specs/product/vision.md" ]] && VISION_CONTEXT=$(cat "specs/product/vision.md")
+
+BDD=$("$SCRIPT_DIR/claude.sh" \
+  "Generate BDD acceptance criteria for this task: '${TASK}'
+Format:
+Feature: <name>
+
+  Scenario: <scenario name>
+    Given <precondition>
+    When <action>
+    Then <expected outcome>
+
+Write 2-4 scenarios. Be specific. No prose." \
+  <(echo "$VISION_CONTEXT"))
+
+confirm_or_edit BDD "BDD acceptance criteria"
+
+# ── Sensor check ───────────────────────────────────────────────────────────────
+header "Checking sensors..."
+
+ensure_dir "harness/sensors"
+if [[ ! -f "$SENSOR_FILE" ]]; then
+  warn "No check.sh found. Creating empty sensor file."
+  cat > "$SENSOR_FILE" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+PASS=0; FAIL=0
+run_check() {
+  local name="$1"; shift
+  if "$@" &>/dev/null; then echo "  ✓ ${name}"; ((PASS++)) || true
+  else                       echo "  ✗ ${name}"; ((FAIL++)) || true
+  fi
+}
+echo "Running sensors..."
+# Add checks below
+echo ""
+echo "Results: ${PASS} passed, ${FAIL} failed"
+[[ $FAIL -eq 0 ]]
+EOF
+  chmod +x "$SENSOR_FILE"
+fi
+
+# Infer task type for sensor suggestions
+TASK_TYPE_PROMPT="Task: '${TASK}'. What type is this? Choose from: api, ui, db, config, docs, test, infra, other. One word answer."
+TASK_TYPE=$("$SCRIPT_DIR/claude.sh" "$TASK_TYPE_PROMPT")
+TASK_TYPE=$(echo "$TASK_TYPE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+
+SENSOR_CONTENT=$(cat "$SENSOR_FILE")
+
+info "Task type detected: ${TASK_TYPE}"
+
+# Ask AI if sensors cover this task type
+SENSOR_CHECK=$("$SCRIPT_DIR/claude.sh" \
+  "Current check.sh content:
+${SENSOR_CONTENT}
+
+Task type: ${TASK_TYPE}
+Task: ${TASK}
+
+Does check.sh cover this task type?
+- covered: yes or no
+- missing: what checks are missing (if any)
+- proposed_addition: exact bash lines to add to check.sh (or 'none')")
+
+divider
+echo "$SENSOR_CHECK"
+divider
+
+COVERED=$(echo "$SENSOR_CHECK" | grep -i '^covered:' | sed 's/covered: *//' | tr '[:upper:]' '[:lower:]' || true)
+PROPOSED=$(echo "$SENSOR_CHECK" | grep -i '^proposed_addition:' | sed 's/proposed_addition: *//' || true)
+
+if [[ "$COVERED" == "no" && -n "$PROPOSED" && "$PROPOSED" != "none" ]]; then
+  warn "Sensors don't cover this task type. Auto-adding proposed check..."
+  echo "$PROPOSED"
+  echo
+  if grep -q 'Add checks below' "$SENSOR_FILE"; then
+    sed -i.bak "s|# Add checks below|# Add checks below"$'\\\n'"${PROPOSED}|" "$SENSOR_FILE"
+    rm -f "${SENSOR_FILE}.bak"
+  else
+    echo "" >> "$SENSOR_FILE"
+    echo "# Added for ${TASK_TYPE} tasks" >> "$SENSOR_FILE"
+    echo "$PROPOSED" >> "$SENSOR_FILE"
+  fi
+  success "Sensor added to check.sh."
+else
+  success "Sensors already cover this task type."
+fi
+
+# ── Create spec file ───────────────────────────────────────────────────────────
+header "Creating spec file..."
+
+ensure_dir "$SPECS_DIR"
+
+if [[ -f "$SPEC_FILE" ]]; then
+  warn "Spec file already exists: ${SPEC_FILE}"
+  if ! yes_no "Overwrite?"; then
+    info "Keeping existing spec."
+  else
+    rm "$SPEC_FILE"
+  fi
+fi
+
+if [[ ! -f "$SPEC_FILE" ]]; then
+  cat > "$SPEC_FILE" <<SPEC_EOF
+# Task Spec: ${TASK}
+
+Slug: ${SLUG}
+Branch: ${BRANCH}
+Created: $(date +%Y-%m-%d)
+
+---
+
+## BDD Acceptance Criteria
+
+${BDD}
+
+---
+
+## Notes
+
+<!-- Human notes appended here during execute-task.sh iterations -->
+SPEC_EOF
+  success "Created ${SPEC_FILE}"
+fi
+
+# ── Create branch ──────────────────────────────────────────────────────────────
+header "Creating branch..."
+
+# On a brand-new repo with no commits, HEAD doesn't exist yet.
+# Create an initial empty commit so branches work normally.
+if ! git rev-parse HEAD &>/dev/null; then
+  info "No commits yet — creating initial empty commit..."
+  git commit --allow-empty -m "chore: init repo"
+fi
+
+CURRENT=$(current_branch)
+if [[ "$CURRENT" == "$BRANCH" ]]; then
+  info "Already on branch ${BRANCH}."
+else
+  BASE_BRANCH="main"
+  [[ -f "harness/.config" ]] && source "harness/.config"
+
+  if git show-ref --verify --quiet "refs/heads/${BRANCH}"; then
+    warn "Branch ${BRANCH} already exists."
+    if yes_no "Switch to it?"; then
+      git checkout "$BRANCH"
+    else
+      info "Staying on ${CURRENT}."
+    fi
+  else
+    git checkout -b "$BRANCH"
+    success "Created and switched to branch: ${BRANCH}"
+  fi
+fi
+
+# ── Final approval ─────────────────────────────────────────────────────────────
+echo
+header "Pre-task summary"
+divider
+info "Task:   ${TASK}"
+info "Branch: ${BRANCH}"
+info "Spec:   ${SPEC_FILE}"
+divider
+echo
+info "BDD saved to spec:"
+echo "$BDD"
+echo
+if yes_no "Everything looks good — ready to start coding?"; then
+  echo
+  success "Run 'avangardespec task' to start the Ralph loop."
+else
+  warn "Go back and adjust the spec or sensors before coding."
+  info "Edit the spec at: ${SPEC_FILE}"
+  info "Edit sensors at:  ${SENSOR_FILE}"
+fi
+echo
