@@ -49,24 +49,33 @@ function parseBranchMeta() {
 const STATUS_MAP = { M: 'modified', A: 'added', D: 'deleted', '?': 'added' };
 
 /**
- * Returns a list of changed files with their status.
+ * Parses the output of `git status --porcelain` into an array of { path, status } objects.
+ * @param {string} porcelainOutput
  * @returns {Array<{ path: string, status: string }>}
  */
-function getChangedFiles() {
-  const output = execSync('git status --porcelain', { encoding: 'utf8' });
-  return output
+function parseGitStatus(porcelainOutput) {
+  return porcelainOutput
     .split('\n')
     .filter(line => line.trim().length > 0)
     .map(line => {
       const xy = line.slice(0, 2);
       const filePath = line.slice(3).trim();
-      const code = xy.trim()[0];
+      const code = xy[0] !== ' ' ? xy[0] : xy[1];
       const status = STATUS_MAP[code] || 'modified';
       return { path: filePath, status };
     });
 }
 
-module.exports = { parseBranch, getCurrentBranch, parseBranchMeta, getChangedFiles };
+/**
+ * Returns a list of changed files with their status.
+ * @returns {Array<{ path: string, status: string }>}
+ */
+function getChangedFiles() {
+  const output = execSync('git status --porcelain', { encoding: 'utf8' });
+  return parseGitStatus(output);
+}
+
+module.exports = { parseBranch, getCurrentBranch, parseBranchMeta, getChangedFiles, parseGitStatus };
 
 function isGitRepo() {
   try {

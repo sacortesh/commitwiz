@@ -35,3 +35,7 @@ Feature: Git Utils
 ## Notes
 
 <!-- Human notes appended here during execute-task.sh iterations -->
+
+## Rejection Notes — 2026-04-26
+
+- recommendation: **return to loop** — fix `xy.trim()[0]` to explicitly handle index vs working-tree columns (use `xy[0] !== ' ' ? xy[0] : xy[1]`) and add a unit test fixture covering staged `D`, unstaged `M`, and untracked `??` to fully satisfy the scenario deterministically
