@@ -30,8 +30,18 @@ Feature: Step-by-step commit prompt loop
     When the user selects "edit" at the confirmation prompt and changes the type to "fix"
     Then the CLI re-runs only the type step, preserves other answers, and re-displays the updated formatted message
 
+  Scenario: Agent assembles test battery infrastructure
+    Given the agent has coded enough
+    When the agent finishes new testable tasks
+    Then the agent implements unit testing, 
+    and adds the running logic into the sensors
+
 ---
 
 ## Notes
 
 <!-- Human notes appended here during execute-task.sh iterations -->
+
+## Rejection Notes — 2026-04-26
+
+i want the unit tests to use the coverage tool, enforce coverage of 80% for lines and branches. also some sensors are overcoverded with the tests. so they can be cleaned up
