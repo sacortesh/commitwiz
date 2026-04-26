@@ -29,28 +29,11 @@ echo
 
 # ── Task scope check ───────────────────────────────────────────────────────────
 CURRENT_BRANCH=$(current_branch)
-TASK_NAME="${CURRENT_BRANCH#task/}"
 
-# Ask AI if any files look out of scope
-OUT_OF_SCOPE=$("$SCRIPT_DIR/claude.sh" \
-  "Current task branch: ${CURRENT_BRANCH}
-Changed files:
-${CHANGED_FILES}
-
-Are any of these files likely outside the scope of this task?
-- out_of_scope: list any suspicious files, or 'none'
-- reason: brief explanation")
-
-SUSPECT=$(echo "$OUT_OF_SCOPE" | grep -i '^out_of_scope:' | sed 's/out_of_scope: *//')
-
-if [[ -n "$SUSPECT" && "$SUSPECT" != "none" ]]; then
-  warn "Possible out-of-scope files detected:"
-  echo "  ${SUSPECT}"
-  echo
-  if ! yes_no "Proceed with commit anyway?"; then
-    info "Commit aborted. Review the files and re-run."
-    exit 0
-  fi
+info "Review the files above — are they all in scope for this task?"
+if ! yes_no "Proceed with commit?"; then
+  info "Commit aborted."
+  exit 0
 fi
 
 # ── Generate commit message ────────────────────────────────────────────────────

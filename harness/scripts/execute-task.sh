@@ -87,11 +87,22 @@ invoke_agent() {
   local prompt_file
   prompt_file=$(mktemp /tmp/harness-prompt-XXXXXX.txt)
   echo "$prompt" > "$prompt_file"
-  info "Launching Claude agent..."
+
+  header "Claude agent — implement task"
+  divider
+  info "Claude will open with the task context pre-loaded."
+  info "When you are done coding, exit Claude (/exit or Escape)."
+  info "Sensors will run automatically after you exit."
+  divider
   echo
-  # claude without --print opens an interactive session with the prompt as first message
-  claude "$prompt"
+
+  # || true: claude can exit non-zero (/exit, Ctrl+C) — don't abort the loop
+  claude "$(cat "$prompt_file")" || true
+
   rm -f "$prompt_file"
+  echo
+  info "Claude session ended. Running sensors..."
+  echo
 }
 
 # ── Ralph loop ─────────────────────────────────────────────────────────────────
@@ -142,12 +153,16 @@ ${SENSOR_OUTPUT}")
     fi
 
     echo
-    if yes_no "Continue the loop? (n to exit and run 'avangardespec close')"; then
+    if yes_no "Continue the loop?"; then
       info "Continuing..."
     else
       echo
-      success "Exiting loop. Run 'avangardespec close' when ready to close the task."
-      break
+      if yes_no "Run closure now?"; then
+        exec bash "$SCRIPT_DIR/closure-task.sh"
+      else
+        success "Exiting. Run 'avangardespec close' when ready."
+        break
+      fi
     fi
 
   else

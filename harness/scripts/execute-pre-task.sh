@@ -175,11 +175,19 @@ fi
 # ── Create branch ──────────────────────────────────────────────────────────────
 header "Creating branch..."
 
-# On a brand-new repo with no commits, HEAD doesn't exist yet.
-# Create an initial empty commit so branches work normally.
+# Ensure there is at least one commit so branches work.
+# Also commit any untracked harness scaffold so it doesn't pollute task diffs.
 if ! git rev-parse HEAD &>/dev/null; then
-  info "No commits yet — creating initial empty commit..."
-  git commit --allow-empty -m "chore: init repo"
+  info "No commits yet — committing harness scaffold as initial commit..."
+  git add harness/ specs/ CLAUDE.md 2>/dev/null || true
+  git commit --allow-empty -m "chore: init harness scaffold"
+else
+  # Already have commits — commit any un-committed harness files before branching
+  git add harness/ specs/ CLAUDE.md 2>/dev/null || true
+  if ! git diff --cached --quiet; then
+    info "Committing untracked harness files before branching..."
+    git commit -m "chore: update harness scaffold"
+  fi
 fi
 
 CURRENT=$(current_branch)

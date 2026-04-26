@@ -320,6 +320,19 @@ fi
 echo "BASE_BRANCH=${BASE_BRANCH}" > "harness/.config"
 success "Saved harness config"
 
+# ── Commit scaffold so task branches start clean ───────────────────────────────
+if git rev-parse --git-dir &>/dev/null; then
+  info "Committing harness scaffold..."
+  git add harness/ specs/ CLAUDE.md 2>/dev/null || true
+  # Only commit if there is something staged
+  if ! git diff --cached --quiet; then
+    git commit -m "chore: init harness scaffold"
+    success "Scaffold committed."
+  else
+    info "Nothing to commit (scaffold already tracked)."
+  fi
+fi
+
 # ── Done ───────────────────────────────────────────────────────────────────────
 echo
 header "Harness initialized successfully."

@@ -1,0 +1,13 @@
+{
+  "name": "commitwiz",
+  "version": "0.1.0",
+  "description": "Interactive CLI for composing conventional commit messages",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "commitwiz": "./bin/commitwiz.js"
+  },
+  "scripts": {}
+}
